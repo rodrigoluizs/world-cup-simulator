@@ -32,7 +32,14 @@ body {
   margin: 0;
 }
 
-#run {
+.playback-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.btn-play,
+.btn-pause {
   background: var(--accent);
   color: #0b132b;
   border: none;
@@ -40,15 +47,30 @@ body {
   padding: 0.5rem 1.1rem;
   font-weight: 600;
   cursor: pointer;
+  font-size: 0.95rem;
 }
 
-#run:hover {
+.btn-play:hover,
+.btn-pause:hover {
   filter: brightness(1.08);
 }
 
-.status {
+.speed-label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.9rem;
   color: var(--muted);
-  font-size: 0.95rem;
+}
+
+.speed-label select {
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--node);
+  border-radius: 6px;
+  padding: 0.3rem 0.5rem;
+  font-size: 0.9rem;
+  cursor: pointer;
 }
 
 .graph-container {
@@ -110,4 +132,81 @@ body {
   font-weight: 700;
   padding: 0.3rem 0.9rem;
   border-radius: 999px;
+}
+
+/* Side-by-side layout: graph + standings */
+.sim-layout {
+  display: flex;
+  align-items: flex-start;
+  gap: 2rem;
+  padding: 0 1.5rem 2rem;
+  flex-wrap: wrap;
+}
+
+.graph-container {
+  flex: 0 0 auto;
+  max-width: 560px;
+  width: 100%;
+  padding: 0;
+}
+
+.standings-container {
+  flex: 1 1 280px;
+  min-width: 280px;
+}
+
+/* Classic tournament standings table */
+.standings {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+  background: var(--panel);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.standings thead {
+  background: var(--node);
+}
+
+.standings th,
+.standings td {
+  padding: 0.55rem 0.6rem;
+  text-align: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.standings th {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.standings .col-team {
+  text-align: left;
+  min-width: 7rem;
+}
+
+.standings .col-pts {
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.team-flag {
+  margin-right: 0.35rem;
+}
+
+.team-code {
+  font-weight: 600;
+}
+
+/* Highlight qualifying rows after group is complete */
+.standing-row.qualified {
+  background: rgba(91, 192, 190, 0.12);
+  border-left: 3px solid var(--accent);
+}
+
+.standing-row.qualified .col-pts {
+  color: #7de8e6;
 }
