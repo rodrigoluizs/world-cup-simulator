@@ -1,0 +1,18 @@
+node_modules/
+dist/
+.cache/
+.DS_Store
+*.tsbuildinfo
+
+# Stack caches (Vite/Vitest) — un-ignored caches dirty the tree and abort the
+# implement station's preflight.
+.vite/
+coverage/
+
+# Editor
+.idea/
+
+# Factory artifacts stay on disk, out of git, so planner/refine writes do not
+# trip the implement station's clean-tree preflight.
+.beans/
+runs/
