@@ -1,0 +1,13 @@
+{
+  "hooks": {
+    "SessionStart": [
+      { "hooks": [ { "type": "command", "command": "beans prime" } ] }
+    ],
+    "PreCompact": [
+      { "hooks": [ { "type": "command", "command": "beans prime" } ] }
+    ],
+    "Stop": [
+      { "hooks": [ { "type": "command", "command": "bash .claude/hooks/trace-run.sh" } ] }
+    ]
+  }
+}
