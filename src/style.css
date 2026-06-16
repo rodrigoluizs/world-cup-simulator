@@ -210,3 +210,112 @@ body {
 .standing-row.qualified .col-pts {
   color: #7de8e6;
 }
+
+/* Tournament layout: groups grid + qualification sidebar */
+.tournament-layout {
+  display: flex;
+  align-items: flex-start;
+  gap: 1.5rem;
+  padding: 0 1rem 2rem;
+}
+
+.groups-grid {
+  flex: 1 1 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(480px, 1fr));
+  gap: 1.5rem;
+}
+
+.group-panel {
+  background: var(--panel);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.group-title {
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 0;
+  padding: 0.6rem 1rem;
+  background: var(--node);
+  letter-spacing: 0.03em;
+}
+
+/* Override sim-layout padding inside group panels */
+.group-panel .sim-layout {
+  padding: 0.75rem 0.75rem 1rem;
+  gap: 1rem;
+}
+
+.group-panel .graph-container {
+  max-width: 320px;
+}
+
+/* Qualification sidebar */
+.qualification-aside {
+  flex: 0 0 240px;
+  min-width: 200px;
+  position: sticky;
+  top: 1rem;
+}
+
+.qualification-panel {
+  background: var(--panel);
+  border-radius: 10px;
+  padding: 1rem;
+}
+
+.qual-title {
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 0 0 0.3rem;
+  color: var(--accent);
+}
+
+.qual-status {
+  font-size: 0.78rem;
+  color: var(--muted);
+  margin: 0 0 0.75rem;
+}
+
+.qual-section {
+  margin-top: 0.75rem;
+}
+
+.qual-section-title {
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  margin: 0 0 0.3rem;
+}
+
+.qual-count {
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.qualification-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.qualification-table th {
+  text-align: left;
+  color: var(--muted);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  padding: 0.2rem 0.3rem;
+}
+
+.qualification-table td {
+  padding: 0.25rem 0.3rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.qualification-table .col-group {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
