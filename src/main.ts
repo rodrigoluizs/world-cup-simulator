@@ -1,15 +1,28 @@
 import './style.css'
-import { startSimulation } from './app'
-import groupData from './data/group.json'
-import type { Group } from './model/types'
+import { startTournament } from './app'
+import tournamentData from './data/tournament.json'
+import type { Tournament } from './model/types'
 
-const group = groupData as Group
+const tournament = tournamentData as Tournament
 
 const app = document.querySelector<HTMLDivElement>('#app')
 if (app) {
+  const groupsHtml = tournament.groups
+    .map(
+      (g) => `
+    <div class="group-panel">
+      <h2 class="group-title">${g.name}</h2>
+      <div class="sim-layout">
+        <div class="graph-container" data-group="${g.name}"></div>
+        <div class="standings-container"></div>
+      </div>
+    </div>`,
+    )
+    .join('')
+
   app.innerHTML = `
     <header class="app-header">
-      <h1>2026 World Cup — ${group.name}</h1>
+      <h1>2026 FIFA World Cup</h1>
       <div class="playback-controls">
         <button id="play-pause" type="button" class="btn-play" aria-label="Play">▶ Play</button>
         <label class="speed-label">
@@ -23,18 +36,25 @@ if (app) {
         </label>
       </div>
     </header>
-    <div class="sim-layout">
-      <div id="graph" class="graph-container"></div>
-      <div id="standings" class="standings-container"></div>
+    <div class="tournament-layout">
+      <div class="groups-grid">${groupsHtml}</div>
+      <aside id="qualification" class="qualification-aside"></aside>
     </div>
   `
 
-  const graph = app.querySelector<HTMLDivElement>('#graph')!
-  const standingsEl = app.querySelector<HTMLDivElement>('#standings')!
   const playPauseBtn = app.querySelector<HTMLButtonElement>('#play-pause')!
   const speedSelect = app.querySelector<HTMLSelectElement>('#speed')!
+  const qualPanel = app.querySelector<HTMLElement>('#qualification')!
 
-  let controller = startSimulation(graph, group, { standingsContainer: standingsEl })
+  function buildGroupContainers() {
+    return tournament.groups.map((group) => {
+      const graphEl = app!.querySelector<HTMLElement>(`[data-group="${group.name}"]`)!
+      const standingsEl = graphEl.closest('.sim-layout')!.querySelector<HTMLElement>('.standings-container')!
+      return { graphEl, standingsEl, group }
+    })
+  }
+
+  let controller = startTournament(buildGroupContainers(), qualPanel)
 
   function updatePlayPauseButton(): void {
     if (controller.isPlaying()) {
@@ -61,9 +81,12 @@ if (app) {
     controller.setSpeed(Number(speedSelect.value))
   })
 
-  graph.addEventListener('click', () => {
-    controller = startSimulation(graph, group, {
-      standingsContainer: standingsEl,
+  app.querySelector('.groups-grid')!.addEventListener('click', () => {
+    controller.pause()
+    app.querySelectorAll('.graph-container').forEach((el) => {
+      el.classList.remove('complete')
+    })
+    controller = startTournament(buildGroupContainers(), qualPanel, {
       intervalMs: 1200 / Number(speedSelect.value),
     })
     updatePlayPauseButton()
