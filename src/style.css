@@ -323,3 +323,138 @@ body {
   color: var(--muted);
   font-size: 0.75rem;
 }
+
+/* ── Knockout bracket ─────────────────────────────────────────── */
+
+.knockout-stage {
+  padding: 1rem 1.5rem 2rem;
+  overflow-x: auto;
+}
+
+.bracket {
+  display: flex;
+  gap: 1.5rem;
+  align-items: stretch;
+  min-width: min-content;
+}
+
+.bracket-round {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  gap: 0.6rem;
+  min-width: 11rem;
+}
+
+.bracket-round-title {
+  margin: 0 0 0.25rem;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  text-align: center;
+}
+
+.bracket-tie {
+  background: var(--panel);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  overflow: hidden;
+  transition: opacity 0.3s ease, border-color 0.3s ease;
+}
+
+.bracket-tie.pending {
+  opacity: 0.45;
+}
+
+.bracket-tie.revealed {
+  opacity: 1;
+  border-color: rgba(91, 192, 190, 0.35);
+}
+
+.bracket-tie.tiebreak {
+  border-color: rgba(255, 209, 102, 0.55);
+}
+
+.bt-team {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.55rem;
+  font-size: 0.85rem;
+}
+
+.bt-team.bt-home {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.bt-team.winner {
+  background: rgba(91, 192, 190, 0.16);
+  font-weight: 700;
+}
+
+.bt-name {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.bt-code {
+  font-weight: 600;
+}
+
+.bt-source {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 0.65rem;
+}
+
+.bt-score {
+  min-width: 1.1rem;
+  margin-left: 0.4rem;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+/* ── Champion finale ──────────────────────────────────────────── */
+
+.champion-stage {
+  display: flex;
+  justify-content: center;
+  padding: 2rem 1.5rem 4rem;
+}
+
+.champion {
+  text-align: center;
+  animation: champion-pop 0.6s ease;
+}
+
+.champion-label {
+  font-size: 1.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: var(--accent);
+}
+
+.champion-flag {
+  font-size: clamp(6rem, 22vw, 14rem);
+  line-height: 1.1;
+}
+
+.champion-name {
+  font-size: clamp(3rem, 12vw, 8rem);
+  font-weight: 800;
+  line-height: 1;
+}
+
+@keyframes champion-pop {
+  from {
+    transform: scale(0.7);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
