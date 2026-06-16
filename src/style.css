@@ -120,19 +120,7 @@ body {
   fill: var(--accent);
 }
 
-/* Clear completion signal once every match has been revealed. */
-.graph-container.complete::after {
-  content: 'Group complete ✓';
-  position: absolute;
-  top: 0.5rem;
-  left: 50%;
-  transform: translateX(-50%);
-  background: var(--accent);
-  color: #0b132b;
-  font-weight: 700;
-  padding: 0.3rem 0.9rem;
-  border-radius: 999px;
-}
+/* Completion is signalled on the group panel (see .group-panel.complete). */
 
 /* Side-by-side layout: graph + standings */
 .sim-layout {
@@ -239,6 +227,22 @@ body {
   padding: 0.6rem 1rem;
   background: var(--node);
   letter-spacing: 0.03em;
+  transition: background 0.3s ease, color 0.3s ease;
+}
+
+/* Calm completion signal: accent the panel's title bar and ring the panel. */
+.group-panel.complete {
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+.group-panel.complete .group-title {
+  background: var(--accent);
+  color: #0b132b;
+}
+
+.group-panel.complete .group-title::after {
+  content: ' ✓';
+  font-weight: 800;
 }
 
 /* Override sim-layout padding inside group panels */

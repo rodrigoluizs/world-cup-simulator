@@ -83,7 +83,7 @@ if (app) {
 
   app.querySelector('.groups-grid')!.addEventListener('click', () => {
     controller.pause()
-    app.querySelectorAll('.graph-container').forEach((el) => {
+    app.querySelectorAll('.group-panel, .graph-container').forEach((el) => {
       el.classList.remove('complete')
     })
     controller = startTournament(buildGroupContainers(), qualPanel, {

@@ -63,6 +63,12 @@ function createGroupSimulation(
 
   let revealed = 0
   let currentStandings = computeStandings(group.teams, [])
+  const panel = container.closest('.group-panel')
+
+  function markComplete(): void {
+    container.classList.add('complete')
+    panel?.classList.add('complete')
+  }
 
   function refresh(complete: boolean): void {
     currentStandings = computeStandings(group.teams, results.slice(0, revealed))
@@ -73,7 +79,7 @@ function createGroupSimulation(
   }
 
   if (results.length === 0) {
-    container.classList.add('complete')
+    markComplete()
     refresh(true)
   } else {
     refresh(false)
@@ -86,7 +92,7 @@ function createGroupSimulation(
       revealed++
       const complete = isComplete(revealed, results.length)
       refresh(complete)
-      if (complete) container.classList.add('complete')
+      if (complete) markComplete()
     },
     isComplete() {
       return isComplete(revealed, results.length)
