@@ -32,6 +32,10 @@ export interface Group {
   teams: Team[]
 }
 
+export interface Tournament {
+  groups: Group[]
+}
+
 export interface Match {
   home: Team
   away: Team
