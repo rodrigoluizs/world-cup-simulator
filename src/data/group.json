@@ -1,9 +1,9 @@
 {
   "name": "Group A",
   "teams": [
-    { "name": "Mexico", "code": "MEX", "confederation": "CONCACAF" },
-    { "name": "South Africa", "code": "RSA", "confederation": "CAF" },
-    { "name": "South Korea", "code": "KOR", "confederation": "AFC" },
-    { "name": "Czechia", "code": "CZE", "confederation": "UEFA" }
+    { "name": "Mexico", "code": "MEX", "confederation": "CONCACAF", "flag": "🇲🇽" },
+    { "name": "South Africa", "code": "RSA", "confederation": "CAF", "flag": "🇿🇦" },
+    { "name": "South Korea", "code": "KOR", "confederation": "AFC", "flag": "🇰🇷" },
+    { "name": "Czechia", "code": "CZE", "confederation": "UEFA", "flag": "🇨🇿" }
   ]
 }
