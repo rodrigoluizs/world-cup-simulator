@@ -10,6 +10,20 @@ export interface Team {
   code: string
   /** FIFA confederation, e.g. "CONCACAF". */
   confederation: string
+  /** Emoji flag, e.g. "🇲🇽". Optional for backwards compatibility. */
+  flag?: string
+}
+
+export interface Standing {
+  team: Team
+  played: number
+  won: number
+  drawn: number
+  lost: number
+  goalsFor: number
+  goalsAgainst: number
+  goalDiff: number
+  points: number
 }
 
 export interface Group {

@@ -86,7 +86,8 @@ export function renderGroupGraph(container: HTMLElement, group: Group, matches: 
       'text-anchor': 'middle',
       'dominant-baseline': 'central',
     })
-    text.textContent = group.teams[i].code
+    const t = group.teams[i]
+    text.textContent = t.flag ? `${t.flag} ${t.code}` : t.code
     svg.append(text)
   })
 
