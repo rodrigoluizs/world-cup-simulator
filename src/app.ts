@@ -1,7 +1,9 @@
-import type { Group } from './model/types'
+import type { Group, Standing, Tournament } from './model/types'
 import { renderGroupGraph, revealResult } from './render/graph'
+import { renderQualification } from './render/qualification'
 import { renderStandings } from './render/standings'
 import { generateMatches } from './sim/schedule'
+import { type GroupEntry, computeQualification } from './sim/qualification'
 import { computeStandings } from './sim/standings'
 import { type Rng, simulateGroup } from './sim/simulate'
 
@@ -23,6 +25,19 @@ export interface SimulationController {
   isPlaying(): boolean
 }
 
+interface GroupSimOptions {
+  rng?: Rng
+  standingsContainer?: HTMLElement
+  qualifierCount?: number
+  onTick?: (standings: Standing[], complete: boolean) => void
+}
+
+interface GroupSimulation {
+  revealNext(): void
+  isComplete(): boolean
+  standings(): Standing[]
+}
+
 const DEFAULT_INTERVAL_MS = 1200
 
 /** True once every match has been revealed (drives the completion signal). */
@@ -33,6 +48,120 @@ export function isComplete(revealed: number, total: number): boolean {
 /** Map a speed multiplier (1/2/4/8) to a reveal interval in milliseconds. */
 export function intervalForSpeed(multiplier: number, baseMs = DEFAULT_INTERVAL_MS): number {
   return Math.round(baseMs / multiplier)
+}
+
+function createGroupSimulation(
+  container: HTMLElement,
+  group: Group,
+  opts: GroupSimOptions,
+): GroupSimulation {
+  const qualifierCount = opts.qualifierCount ?? 2
+  const matches = generateMatches(group.teams)
+  const results = simulateGroup(matches, opts.rng)
+
+  renderGroupGraph(container, group, matches)
+
+  let revealed = 0
+  let currentStandings = computeStandings(group.teams, [])
+  const panel = container.closest('.group-panel')
+
+  function markComplete(): void {
+    container.classList.add('complete')
+    panel?.classList.add('complete')
+  }
+
+  function refresh(complete: boolean): void {
+    currentStandings = computeStandings(group.teams, results.slice(0, revealed))
+    if (opts.standingsContainer) {
+      renderStandings(opts.standingsContainer, currentStandings, qualifierCount, complete)
+    }
+    opts.onTick?.(currentStandings, complete)
+  }
+
+  if (results.length === 0) {
+    markComplete()
+    refresh(true)
+  } else {
+    refresh(false)
+  }
+
+  return {
+    revealNext() {
+      if (revealed >= results.length) return
+      revealResult(container, results[revealed], revealed)
+      revealed++
+      const complete = isComplete(revealed, results.length)
+      refresh(complete)
+      if (complete) markComplete()
+    },
+    isComplete() {
+      return isComplete(revealed, results.length)
+    },
+    standings() {
+      return currentStandings
+    },
+  }
+}
+
+function makeSharedClock(
+  sims: GroupSimulation[],
+  baseMs: number,
+  qualPanel?: HTMLElement,
+  entries?: { group: Group }[],
+): SimulationController {
+  let speedMultiplier = 1
+  let timer: ReturnType<typeof setInterval> | undefined
+
+  function allDone(): boolean {
+    return sims.every((s) => s.isComplete())
+  }
+
+  function refreshQual(complete: boolean): void {
+    if (!qualPanel || !entries) return
+    const grouped: GroupEntry[] = entries.map((e, i) => ({
+      group: e.group,
+      standings: sims[i].standings(),
+    }))
+    renderQualification(qualPanel, computeQualification(grouped), complete)
+  }
+
+  function startTimer(): void {
+    if (timer !== undefined) clearInterval(timer)
+    const intervalMs = intervalForSpeed(speedMultiplier, baseMs)
+    timer = setInterval(() => {
+      for (const sim of sims) {
+        if (!sim.isComplete()) sim.revealNext()
+      }
+      const done = allDone()
+      refreshQual(done)
+      if (done) {
+        clearInterval(timer)
+        timer = undefined
+      }
+    }, intervalMs)
+  }
+
+  refreshQual(false)
+  if (!allDone()) startTimer()
+
+  return {
+    play() {
+      if (timer === undefined && !allDone()) startTimer()
+    },
+    pause() {
+      if (timer !== undefined) {
+        clearInterval(timer)
+        timer = undefined
+      }
+    },
+    setSpeed(multiplier: number) {
+      speedMultiplier = multiplier
+      if (timer !== undefined) startTimer()
+    },
+    isPlaying() {
+      return timer !== undefined
+    },
+  }
 }
 
 /**
@@ -46,69 +175,35 @@ export function startSimulation(
   opts: StartOptions = {},
 ): SimulationController {
   const baseMs = opts.intervalMs ?? DEFAULT_INTERVAL_MS
-  const standingsContainer = opts.standingsContainer
-  const qualifierCount = opts.qualifierCount ?? 2
+  const sim = createGroupSimulation(container, group, {
+    rng: opts.rng,
+    standingsContainer: opts.standingsContainer,
+    qualifierCount: opts.qualifierCount ?? 2,
+  })
+  return makeSharedClock([sim], baseMs)
+}
 
-  const matches = generateMatches(group.teams)
-  const results = simulateGroup(matches, opts.rng)
-
-  renderGroupGraph(container, group, matches)
-
-  let revealed = 0
-  let speedMultiplier = 1
-  let timer: ReturnType<typeof setInterval> | undefined
-
-  function updateStandings(complete: boolean): void {
-    if (!standingsContainer) return
-    const partialResults = results.slice(0, revealed)
-    const standings = computeStandings(group.teams, partialResults)
-    renderStandings(standingsContainer, standings, qualifierCount, complete)
-  }
-
-  function startTimer(): void {
-    if (timer !== undefined) clearInterval(timer)
-    const intervalMs = intervalForSpeed(speedMultiplier, baseMs)
-    timer = setInterval(() => {
-      revealResult(container, results[revealed], revealed)
-      revealed++
-      const complete = isComplete(revealed, results.length)
-      updateStandings(complete)
-      if (complete) {
-        clearInterval(timer)
-        timer = undefined
-        container.classList.add('complete')
-      }
-    }, intervalMs)
-  }
-
-  if (results.length === 0) {
-    container.classList.add('complete')
-    updateStandings(true)
-  } else {
-    updateStandings(false)
-    startTimer()
-  }
-
-  return {
-    play() {
-      if (timer === undefined && !isComplete(revealed, results.length)) {
-        startTimer()
-      }
-    },
-    pause() {
-      if (timer !== undefined) {
-        clearInterval(timer)
-        timer = undefined
-      }
-    },
-    setSpeed(multiplier: number) {
-      speedMultiplier = multiplier
-      if (timer !== undefined) {
-        startTimer()
-      }
-    },
-    isPlaying() {
-      return timer !== undefined
-    },
-  }
+/**
+ * Render all groups in a tournament and reveal matches across all groups on
+ * a single shared clock. Returns one controller for play/pause/speed.
+ */
+export function startTournament(
+  groupContainers: { graphEl: HTMLElement; standingsEl: HTMLElement; group: Group }[],
+  qualPanel: HTMLElement,
+  opts: StartOptions = {},
+): SimulationController {
+  const baseMs = opts.intervalMs ?? DEFAULT_INTERVAL_MS
+  const sims = groupContainers.map(({ graphEl, standingsEl, group }) =>
+    createGroupSimulation(graphEl, group, {
+      rng: opts.rng,
+      standingsContainer: standingsEl,
+      qualifierCount: opts.qualifierCount ?? 2,
+    }),
+  )
+  return makeSharedClock(
+    sims,
+    baseMs,
+    qualPanel,
+    groupContainers.map(({ group }) => ({ group })),
+  )
 }
