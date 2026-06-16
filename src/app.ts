@@ -1,9 +1,11 @@
-import type { Group, Standing, Tournament } from './model/types'
+import type { Group, Standing, Team, Tournament } from './model/types'
+import { renderBracket, revealTie } from './render/bracket'
 import { renderGroupGraph, revealResult } from './render/graph'
 import { renderQualification } from './render/qualification'
 import { renderStandings } from './render/standings'
+import { createKnockout } from './sim/bracket'
 import { generateMatches } from './sim/schedule'
-import { type GroupEntry, computeQualification } from './sim/qualification'
+import { type GroupEntry, type QualificationResult, computeQualification } from './sim/qualification'
 import { computeStandings } from './sim/standings'
 import { type Rng, simulateGroup } from './sim/simulate'
 
@@ -16,6 +18,8 @@ export interface StartOptions {
   standingsContainer?: HTMLElement
   /** How many top teams qualify (default 2). */
   qualifierCount?: number
+  /** Called once every group has finished, with the final qualification. */
+  onComplete?: (qualification: QualificationResult) => void
 }
 
 export interface SimulationController {
@@ -108,6 +112,7 @@ function makeSharedClock(
   baseMs: number,
   qualPanel?: HTMLElement,
   entries?: { group: Group }[],
+  onAllComplete?: (qualification: QualificationResult) => void,
 ): SimulationController {
   let speedMultiplier = 1
   let timer: ReturnType<typeof setInterval> | undefined
@@ -116,13 +121,17 @@ function makeSharedClock(
     return sims.every((s) => s.isComplete())
   }
 
-  function refreshQual(complete: boolean): void {
-    if (!qualPanel || !entries) return
-    const grouped: GroupEntry[] = entries.map((e, i) => ({
+  function buildQualification(): QualificationResult {
+    const grouped: GroupEntry[] = (entries ?? []).map((e, i) => ({
       group: e.group,
       standings: sims[i].standings(),
     }))
-    renderQualification(qualPanel, computeQualification(grouped), complete)
+    return computeQualification(grouped)
+  }
+
+  function refreshQual(complete: boolean): void {
+    if (!qualPanel || !entries) return
+    renderQualification(qualPanel, buildQualification(), complete)
   }
 
   function startTimer(): void {
@@ -137,6 +146,7 @@ function makeSharedClock(
       if (done) {
         clearInterval(timer)
         timer = undefined
+        onAllComplete?.(buildQualification())
       }
     }, intervalMs)
   }
@@ -205,5 +215,72 @@ export function startTournament(
     baseMs,
     qualPanel,
     groupContainers.map(({ group }) => ({ group })),
+    opts.onComplete,
   )
+}
+
+export interface KnockoutOptions {
+  /** Delay between each tie reveal, in milliseconds. */
+  intervalMs?: number
+  /** Randomness source, injectable for testing. */
+  rng?: Rng
+  /** Called once the final is revealed, with the tournament winner. */
+  onChampion?: (team: Team) => void
+}
+
+/**
+ * Render the seeded knockout bracket, then reveal one tie at a time on a timer
+ * until a champion is crowned. Returns a controller to play, pause, and change
+ * speed, mirroring the group-stage clock.
+ */
+export function startKnockout(
+  container: HTMLElement,
+  qualification: QualificationResult,
+  opts: KnockoutOptions = {},
+): SimulationController {
+  const baseMs = opts.intervalMs ?? DEFAULT_INTERVAL_MS
+  const knockout = createKnockout(qualification, opts.rng)
+  renderBracket(container, knockout)
+
+  let speedMultiplier = 1
+  let timer: ReturnType<typeof setInterval> | undefined
+
+  function step(): void {
+    const reveal = knockout.revealNextTie()
+    if (reveal) revealTie(container, reveal.result, reveal.round, reveal.index)
+    if (knockout.isComplete()) {
+      if (timer !== undefined) {
+        clearInterval(timer)
+        timer = undefined
+      }
+      const champ = knockout.champion()
+      if (champ) opts.onChampion?.(champ)
+    }
+  }
+
+  function startTimer(): void {
+    if (timer !== undefined) clearInterval(timer)
+    timer = setInterval(step, intervalForSpeed(speedMultiplier, baseMs))
+  }
+
+  if (!knockout.isComplete()) startTimer()
+
+  return {
+    play() {
+      if (timer === undefined && !knockout.isComplete()) startTimer()
+    },
+    pause() {
+      if (timer !== undefined) {
+        clearInterval(timer)
+        timer = undefined
+      }
+    },
+    setSpeed(multiplier: number) {
+      speedMultiplier = multiplier
+      if (timer !== undefined) startTimer()
+    },
+    isPlaying() {
+      return timer !== undefined
+    },
+  }
 }
