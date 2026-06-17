@@ -32,13 +32,16 @@ if (app) {
         aria-selected="false" aria-controls="panel-${round}" disabled>${ROUND_LABELS[round]}</button>`,
   ).join('')
 
-  const knockoutPanelsHtml = ROUND_ORDER.map((round) =>
+  // From the quarter-finals onwards there are few ties, so stack them
+  // vertically instead of spreading them across a horizontal row.
+  const verticalFrom = ROUND_ORDER.indexOf('QF')
+  const knockoutPanelsHtml = ROUND_ORDER.map((round, idx) =>
     round === 'F'
       ? `<div id="panel-F" class="tab-panel" hidden role="tabpanel">
            <div class="final-container" id="final-container"></div>
          </div>`
       : `<div id="panel-${round}" class="tab-panel" hidden role="tabpanel">
-           <div class="round-panel" id="round-container-${round}"></div>
+           <div class="round-panel${idx >= verticalFrom ? ' round-panel--vertical' : ''}" id="round-container-${round}"></div>
          </div>`,
   ).join('')
 
