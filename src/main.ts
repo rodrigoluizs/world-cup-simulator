@@ -51,8 +51,10 @@ if (app) {
       </div>
     </div>
     <div id="panel-knockouts" class="tab-panel" hidden role="tabpanel">
-      <section id="knockout" class="knockout-stage"></section>
-      <section id="champion-stage" class="champion-stage" hidden></section>
+      <div class="knockout-wrap">
+        <section id="knockout" class="knockout-stage"></section>
+        <aside id="champion-stage" class="champion-stage" hidden></aside>
+      </div>
     </div>
   `
 
@@ -132,6 +134,12 @@ if (app) {
 
   speedSelect.addEventListener('change', () => {
     controller.setSpeed(Number(speedSelect.value))
+  })
+
+  // Tabs are clickable so the user can review the group stage after it ends.
+  groupsTabBtn.addEventListener('click', () => setActiveTab('groups'))
+  knockoutsTabBtn.addEventListener('click', () => {
+    if (!knockoutsTabBtn.disabled) setActiveTab('knockouts')
   })
 
   app.querySelector('.groups-grid')!.addEventListener('click', () => {
