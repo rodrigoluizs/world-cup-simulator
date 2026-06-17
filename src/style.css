@@ -803,6 +803,42 @@ body {
 
 .final-champion-flag { font-size: 1.4em; line-height: 1; }
 
+.final-champion-titles {
+  margin-top: 0.6rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--gold);
+  letter-spacing: 0.01em;
+}
+
+.final-champion-prior-years {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+}
+
+.github-link {
+  display: flex;
+  align-items: center;
+  color: var(--text-muted);
+  opacity: 0.7;
+  transition: opacity 0.15s;
+  flex-shrink: 0;
+}
+
+.github-link:hover {
+  opacity: 1;
+  color: var(--text);
+}
+
+.github-icon {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
 .final-minute.full-time::after {
   content: ' · FT';
   color: var(--gold);
