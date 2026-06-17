@@ -1,8 +1,8 @@
 import type { Group, Standing, Team, Tournament } from './model/types'
 import {
-  renderChampion,
   renderFinalStage,
   renderSingleRound,
+  revealFinalChampion,
   revealFinalGoal,
   revealTie,
   tickFinalMinute,
@@ -42,6 +42,8 @@ interface GroupSimOptions {
   standingsContainer?: HTMLElement
   qualifierCount?: number
   onTick?: (standings: Standing[], complete: boolean) => void
+  /** When true, scroll each match into view just before its result is revealed. */
+  autoScroll?: boolean
 }
 
 interface GroupSimulation {
@@ -100,6 +102,11 @@ function createGroupSimulation(
   return {
     revealNext() {
       if (revealed >= results.length) return
+      if (opts.autoScroll) {
+        container
+          .querySelector(`#match-${revealed}`)
+          ?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+      }
       revealResult(container, results[revealed], revealed)
       revealed++
       const complete = isComplete(revealed, results.length)
@@ -211,11 +218,14 @@ export function startTournament(
   opts: StartOptions = {},
 ): SimulationController {
   const baseMs = opts.intervalMs ?? DEFAULT_INTERVAL_MS
-  const sims = groupContainers.map(({ graphEl, standingsEl, group }) =>
+  const sims = groupContainers.map(({ graphEl, standingsEl, group }, i) =>
     createGroupSimulation(graphEl, group, {
       rng: opts.rng,
       standingsContainer: standingsEl,
       qualifierCount: opts.qualifierCount ?? 2,
+      // Only the first group drives auto-scroll; all groups advance in lockstep,
+      // so following its current match keeps the whole row in view.
+      autoScroll: i === 0,
     }),
   )
   return makeSharedClock(
@@ -294,7 +304,7 @@ export function startKnockout(
         finaleTimeline = null
         const champ = knockout.champion()
         if (champ) {
-          renderChampion(fc, champ)
+          revealFinalChampion(fc, champ)
           opts.onChampion?.(champ)
         }
       }
