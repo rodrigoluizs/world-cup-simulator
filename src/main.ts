@@ -139,7 +139,7 @@ if (app) {
     updatePlayPauseButton()
   }
 
-  function startGroupPhase(): void {
+  function startGroupPhase(autoplay = true): void {
     controller = startTournament(buildGroupContainers(), qualPanel, {
       onComplete: (qualification) => {
         // Hold on the group stage briefly so the final match's highlight is
@@ -148,6 +148,8 @@ if (app) {
       },
     })
     controller.setSpeed(currentSpeed())
+    // On first load the simulation waits for the user to press Play.
+    if (!autoplay) controller.pause()
     updatePlayPauseButton()
   }
 
@@ -201,5 +203,5 @@ if (app) {
     startGroupPhase()
   })
 
-  startGroupPhase()
+  startGroupPhase(false)
 }
