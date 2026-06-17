@@ -88,6 +88,15 @@ body {
   color: var(--text);
   cursor: pointer;
   user-select: none;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.app-header h1 .app-logo {
+  height: 2em;
+  width: auto;
+  object-fit: contain;
 }
 
 /*
