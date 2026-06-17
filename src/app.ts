@@ -1,9 +1,9 @@
 import type { Group, Standing, Team, Tournament } from './model/types'
-import { renderBracket, revealTie } from './render/bracket'
+import { renderBracket, revealRound, revealTie } from './render/bracket'
 import { renderGroupGraph, revealResult } from './render/graph'
 import { renderQualification } from './render/qualification'
 import { renderStandings } from './render/standings'
-import { createKnockout } from './sim/bracket'
+import { createKnockout, isLastTieOfRound, nextRound } from './sim/bracket'
 import { generateMatches } from './sim/schedule'
 import { type GroupEntry, type QualificationResult, computeQualification } from './sim/qualification'
 import { computeStandings } from './sim/standings'
@@ -247,7 +247,13 @@ export function startKnockout(
 
   function step(): void {
     const reveal = knockout.revealNextTie()
-    if (reveal) revealTie(container, reveal.result, reveal.round, reveal.index)
+    if (reveal) {
+      revealTie(container, reveal.result, reveal.round, reveal.index)
+      if (isLastTieOfRound(knockout, reveal.round, reveal.index)) {
+        const next = nextRound(reveal.round)
+        if (next) revealRound(container, next)
+      }
+    }
     if (knockout.isComplete()) {
       if (timer !== undefined) {
         clearInterval(timer)
