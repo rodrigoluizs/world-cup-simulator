@@ -1,6 +1,7 @@
 import type { Team } from '../model/types'
 import type { BracketRoundView, BracketTeam, KnockoutRound, KnockoutState, TieResult } from '../sim/bracket'
 import type { FinalGoalEvent } from '../sim/final-timeline'
+import { championTitleSummary } from './championTitle'
 
 export const ROUND_LABELS: Record<KnockoutRound, string> = {
   R32: 'Round of 32',
@@ -149,11 +150,13 @@ export function revealFinalChampion(container: HTMLElement, team: Team): void {
   if (!stage || stage.querySelector('.final-champion')) return
 
   const flag = team.flag ? `<span class="final-champion-flag">${team.flag}</span>` : ''
+  const { html: titleHtml } = championTitleSummary(team)
   const banner = document.createElement('div')
   banner.className = 'final-champion'
   banner.innerHTML = `
     <div class="final-champion-label">World Champions</div>
-    <div class="final-champion-name">${flag}<span>${team.name}</span></div>`
+    <div class="final-champion-name">${flag}<span>${team.name}</span></div>
+    ${titleHtml}`
   stage.prepend(banner)
 
   // Mark the running clock as full-time now that the match is over.
