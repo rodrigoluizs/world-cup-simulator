@@ -90,8 +90,12 @@ body {
   user-select: none;
 }
 
-/* Armed state of the hidden "Mineirazo" modifier: Brazil-colours gradient text. */
-.app-header h1.mineirazo {
+/*
+ * Armed state of the hidden "Mineirazo" modifier: Brazil-colours gradient text.
+ * The gradient is clipped to the inline .app-title span (not the full-width h1
+ * flex box) so all three colours span the glyphs instead of only the green edge.
+ */
+.app-header h1.mineirazo .app-title {
   background: linear-gradient(90deg, #009b3a 0%, #ffdf00 50%, #002776 100%);
   -webkit-background-clip: text;
   background-clip: text;
