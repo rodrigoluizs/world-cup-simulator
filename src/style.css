@@ -86,6 +86,17 @@ body {
   margin: 0;
   flex: 1 1 auto;
   color: var(--text);
+  cursor: pointer;
+  user-select: none;
+}
+
+/* Armed state of the hidden "Mineirazo" modifier: Brazil-colours gradient text. */
+.app-header h1.mineirazo {
+  background: linear-gradient(90deg, #009b3a 0%, #ffdf00 50%, #002776 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
 }
 
 .playback-controls {
