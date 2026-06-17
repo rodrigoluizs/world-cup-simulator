@@ -16,16 +16,17 @@ function teamLabel(bt: BracketTeam): string {
     <span class="bt-source">${bt.sourceLabel}</span>`
 }
 
-/** Draw the full bracket skeleton with every tie pending (no results yet). */
+/** Draw the full bracket skeleton; all rounds except the first start locked (hidden). */
 export function renderBracket(container: HTMLElement, bracket: KnockoutState): void {
   container.innerHTML = ''
 
   const wrap = document.createElement('div')
   wrap.className = 'bracket'
 
-  for (const round of bracket.rounds) {
+  for (const [roundIdx, round] of bracket.rounds.entries()) {
     const col = document.createElement('div')
     col.className = `bracket-round round-${round.round}`
+    if (roundIdx > 0) col.classList.add('locked')
 
     const title = document.createElement('h3')
     title.className = 'bracket-round-title'
@@ -70,6 +71,11 @@ export function revealTie(
   const homeWon = result.winner === result.tie.home
   homeEl?.classList.toggle('winner', homeWon)
   awayEl?.classList.toggle('winner', !homeWon)
+}
+
+/** Remove the locked state from a round column, making it visible. */
+export function revealRound(container: HTMLElement, round: KnockoutRound): void {
+  container.querySelector<HTMLElement>(`.round-${round}`)?.classList.remove('locked')
 }
 
 /** Render the large, dominant champion finale. */

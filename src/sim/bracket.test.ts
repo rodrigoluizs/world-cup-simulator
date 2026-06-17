@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import type { Team } from '../model/types'
-import { advanceRound, createKnockout, resolveTie, seedBracket, type Tie } from './bracket'
+import {
+  advanceRound,
+  createKnockout,
+  isLastTieOfRound,
+  nextRound,
+  resolveTie,
+  seedBracket,
+  type Tie,
+} from './bracket'
 import { groupLetter, type QualificationResult } from './qualification'
 import type { Rng } from './simulate'
 import { placeThirds } from './thirds-placement'
@@ -98,6 +106,32 @@ describe('advanceRound', () => {
     expect(next).toHaveLength(2)
     expect(next[0].home.team.code).toBe(results[0].winner.team.code)
     expect(next[0].away.team.code).toBe(results[1].winner.team.code)
+  })
+})
+
+describe('nextRound', () => {
+  it('advances through each round in order', () => {
+    expect(nextRound('R32')).toBe('R16')
+    expect(nextRound('QF')).toBe('SF')
+    expect(nextRound('SF')).toBe('3P')
+    expect(nextRound('3P')).toBe('F')
+  })
+
+  it('returns null after the final', () => {
+    expect(nextRound('F')).toBeNull()
+  })
+})
+
+describe('isLastTieOfRound', () => {
+  const knockout = createKnockout(fullQualification(), seq([0.7, 0.3, 0.5]))
+
+  it('identifies the last tie of R32 (16 ties)', () => {
+    expect(isLastTieOfRound(knockout, 'R32', 15)).toBe(true)
+    expect(isLastTieOfRound(knockout, 'R32', 0)).toBe(false)
+  })
+
+  it('identifies the last tie of F (single tie)', () => {
+    expect(isLastTieOfRound(knockout, 'F', 0)).toBe(true)
   })
 })
 
