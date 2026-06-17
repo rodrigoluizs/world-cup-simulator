@@ -2,7 +2,8 @@ import './style.css'
 import { type SimulationController, startKnockout, startTournament } from './app'
 import tournamentData from './data/tournament.json'
 import type { Tournament } from './model/types'
-import { renderChampion } from './render/bracket'
+import { ROUND_LABELS } from './render/bracket'
+import { ROUND_ORDER, type KnockoutRound } from './sim/bracket'
 import type { QualificationResult } from './sim/qualification'
 
 const tournament = tournamentData as Tournament
@@ -21,6 +22,22 @@ if (app) {
     </div>`,
     )
     .join('')
+
+  const knockoutTabsHtml = ROUND_ORDER.map(
+    (round) =>
+      `<button class="tab-btn" id="tab-${round}" role="tab"
+        aria-selected="false" aria-controls="panel-${round}" disabled>${ROUND_LABELS[round]}</button>`,
+  ).join('')
+
+  const knockoutPanelsHtml = ROUND_ORDER.map((round) =>
+    round === 'F'
+      ? `<div id="panel-F" class="tab-panel" hidden role="tabpanel">
+           <div class="final-container" id="final-container"></div>
+         </div>`
+      : `<div id="panel-${round}" class="tab-panel" hidden role="tabpanel">
+           <div class="round-panel" id="round-container-${round}"></div>
+         </div>`,
+  ).join('')
 
   app.innerHTML = `
     <header class="app-header">
@@ -41,8 +58,7 @@ if (app) {
     <nav class="tab-bar" role="tablist">
       <button class="tab-btn tab-btn--active" id="tab-groups" role="tab"
         aria-selected="true" aria-controls="panel-groups">Group Stage</button>
-      <button class="tab-btn" id="tab-knockouts" role="tab"
-        aria-selected="false" aria-controls="panel-knockouts" disabled>Knockouts</button>
+      ${knockoutTabsHtml}
     </nav>
     <div id="panel-groups" class="tab-panel" role="tabpanel">
       <div class="tournament-layout">
@@ -50,23 +66,24 @@ if (app) {
         <aside id="qualification" class="qualification-aside"></aside>
       </div>
     </div>
-    <div id="panel-knockouts" class="tab-panel" hidden role="tabpanel">
-      <div class="knockout-wrap">
-        <section id="knockout" class="knockout-stage"></section>
-        <aside id="champion-stage" class="champion-stage" hidden></aside>
-      </div>
-    </div>
+    ${knockoutPanelsHtml}
   `
 
   const playPauseBtn = app.querySelector<HTMLButtonElement>('#play-pause')!
   const speedSelect = app.querySelector<HTMLSelectElement>('#speed')!
   const qualPanel = app.querySelector<HTMLElement>('#qualification')!
   const groupsPanel = app.querySelector<HTMLElement>('#panel-groups')!
-  const knockoutsPanel = app.querySelector<HTMLElement>('#panel-knockouts')!
   const groupsTabBtn = app.querySelector<HTMLButtonElement>('#tab-groups')!
-  const knockoutsTabBtn = app.querySelector<HTMLButtonElement>('#tab-knockouts')!
-  const knockoutEl = app.querySelector<HTMLElement>('#knockout')!
-  const championEl = app.querySelector<HTMLElement>('#champion-stage')!
+  const finalContainer = app.querySelector<HTMLElement>('#final-container')!
+
+  const knockoutTabBtns = new Map<KnockoutRound, HTMLButtonElement>()
+  const roundContainers = new Map<KnockoutRound, HTMLElement>()
+  for (const round of ROUND_ORDER) {
+    knockoutTabBtns.set(round, app.querySelector<HTMLButtonElement>(`#tab-${round}`)!)
+    if (round !== 'F') {
+      roundContainers.set(round, app.querySelector<HTMLElement>(`#round-container-${round}`)!)
+    }
+  }
 
   function buildGroupContainers() {
     return tournament.groups.map((group) => {
@@ -80,24 +97,40 @@ if (app) {
 
   let controller: SimulationController
 
-  function setActiveTab(tab: 'groups' | 'knockouts'): void {
-    const isGroups = tab === 'groups'
-    groupsPanel.hidden = !isGroups
-    knockoutsPanel.hidden = isGroups
-    groupsTabBtn.classList.toggle('tab-btn--active', isGroups)
-    knockoutsTabBtn.classList.toggle('tab-btn--active', !isGroups)
-    groupsTabBtn.setAttribute('aria-selected', String(isGroups))
-    knockoutsTabBtn.setAttribute('aria-selected', String(!isGroups))
+  function setActiveStage(stage: 'groups' | KnockoutRound): void {
+    groupsTabBtn.classList.remove('tab-btn--active')
+    groupsTabBtn.setAttribute('aria-selected', 'false')
+    groupsPanel.hidden = true
+    for (const round of ROUND_ORDER) {
+      const btn = knockoutTabBtns.get(round)!
+      btn.classList.remove('tab-btn--active')
+      btn.setAttribute('aria-selected', 'false')
+      app!.querySelector<HTMLElement>(`#panel-${round}`)!.hidden = true
+    }
+    if (stage === 'groups') {
+      groupsTabBtn.classList.add('tab-btn--active')
+      groupsTabBtn.setAttribute('aria-selected', 'true')
+      groupsPanel.hidden = false
+    } else {
+      const btn = knockoutTabBtns.get(stage)!
+      btn.classList.add('tab-btn--active')
+      btn.setAttribute('aria-selected', 'true')
+      app!.querySelector<HTMLElement>(`#panel-${stage}`)!.hidden = false
+    }
   }
 
   function startKnockoutPhase(qualification: QualificationResult): void {
-    knockoutsTabBtn.disabled = false
-    setActiveTab('knockouts')
-    controller = startKnockout(knockoutEl, qualification, {
-      onChampion: (team) => {
-        championEl.hidden = false
-        renderChampion(championEl, team)
+    knockoutTabBtns.get('R32')!.disabled = false
+    setActiveStage('R32')
+    controller = startKnockout(qualification, {
+      containerForRound: (round) => roundContainers.get(round)!,
+      finalContainer,
+      onRoundChange: (round) => {
+        const btn = knockoutTabBtns.get(round)
+        if (btn) btn.disabled = false
+        setActiveStage(round)
       },
+      onChampion: () => {},
     })
     controller.setSpeed(currentSpeed())
     updatePlayPauseButton()
@@ -136,22 +169,28 @@ if (app) {
     controller.setSpeed(Number(speedSelect.value))
   })
 
-  // Tabs are clickable so the user can review the group stage after it ends.
-  groupsTabBtn.addEventListener('click', () => setActiveTab('groups'))
-  knockoutsTabBtn.addEventListener('click', () => {
-    if (!knockoutsTabBtn.disabled) setActiveTab('knockouts')
-  })
+  groupsTabBtn.addEventListener('click', () => setActiveStage('groups'))
+  for (const round of ROUND_ORDER) {
+    const btn = knockoutTabBtns.get(round)!
+    btn.addEventListener('click', () => {
+      if (!btn.disabled) setActiveStage(round)
+    })
+  }
 
+  // Clicking the groups grid resets and re-runs from the start
   app.querySelector('.groups-grid')!.addEventListener('click', () => {
     controller.pause()
-    knockoutEl.innerHTML = ''
-    championEl.hidden = true
-    championEl.innerHTML = ''
-    knockoutsTabBtn.disabled = true
-    setActiveTab('groups')
-    app!.querySelectorAll('.group-panel, .graph-container').forEach((el) => {
+    for (const round of ROUND_ORDER) {
+      const btn = knockoutTabBtns.get(round)!
+      btn.disabled = true
+      btn.classList.remove('tab-btn--active')
+      btn.setAttribute('aria-selected', 'false')
+      app!.querySelector<HTMLElement>(`#panel-${round}`)!.hidden = true
+    }
+    app.querySelectorAll('.group-panel, .graph-container').forEach((el) => {
       el.classList.remove('complete')
     })
+    setActiveStage('groups')
     startGroupPhase()
   })
 
