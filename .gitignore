@@ -13,8 +13,10 @@ coverage/
 .idea/
 
 # Factory run artifacts stay on disk, out of git, so they do not trip the
-# implement station's clean-tree preflight.
-runs/
+# implement station's clean-tree preflight. The trace log is the exception:
+# it is tracked so run history is versioned.
+runs/*
+!runs/trace.jsonl
 
 # Playwright MCP artifacts
 .playwright-mcp/
