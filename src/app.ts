@@ -64,6 +64,24 @@ export function intervalForSpeed(multiplier: number, baseMs = DEFAULT_INTERVAL_M
   return Math.round(baseMs / multiplier)
 }
 
+/** Playback speed used for the final's goal-by-goal animation (slow-motion). */
+export const FINAL_PLAYBACK_SPEED = 0.5
+
+/**
+ * Reveal delay for a knockout round's ties. The semi-finals, third-place
+ * playoff, and the pause before the final always run at 1x so the late rounds
+ * breathe (the user's speed selector only governs the earlier rounds). The
+ * final's own goal-by-goal animation runs at {@link FINAL_PLAYBACK_SPEED}.
+ */
+export function knockoutInterval(
+  round: KnockoutRound,
+  multiplier: number,
+  baseMs = DEFAULT_INTERVAL_MS,
+): number {
+  if (round === 'SF' || round === '3P' || round === 'F') return intervalForSpeed(1, baseMs)
+  return intervalForSpeed(multiplier, baseMs)
+}
+
 function createGroupSimulation(
   container: HTMLElement,
   group: Group,
@@ -282,12 +300,20 @@ export function startKnockout(
   let finaleMinute = 0
   let finaleGoalIndex = 0
 
+  function clearTimer(): void {
+    if (timer !== undefined) {
+      clearTimeout(timer)
+      clearInterval(timer)
+      timer = undefined
+    }
+  }
+
   function startFinaleTimer(): void {
-    if (timer !== undefined) clearInterval(timer)
+    clearTimer()
     if (!finaleTimeline || !opts.finalContainer) return
     const ft = finaleTimeline
     const fc = opts.finalContainer
-    const tickMs = Math.max(16, Math.round(4500 / (ft.finalMinute + 1) / speedMultiplier))
+    const tickMs = Math.max(16, Math.round(4500 / (ft.finalMinute + 1) / FINAL_PLAYBACK_SPEED))
     timer = setInterval(() => {
       tickFinalMinute(fc, finaleMinute)
       while (
@@ -299,8 +325,7 @@ export function startKnockout(
       }
       finaleMinute++
       if (finaleMinute > ft.finalMinute) {
-        clearInterval(timer)
-        timer = undefined
+        clearTimer()
         finaleTimeline = null
         const champ = knockout.champion()
         if (champ) {
@@ -311,27 +336,31 @@ export function startKnockout(
     }, tickMs)
   }
 
-  function startTimer(): void {
-    if (timer !== undefined) clearInterval(timer)
+  // Self-scheduling step: the delay before each tie is keyed off the round it
+  // belongs to, and the active tab is switched up front so the panel shows its
+  // pending ties before the results fill in.
+  function scheduleStep(): void {
+    clearTimer()
     if (finaleTimeline !== null) {
       startFinaleTimer()
-    } else {
-      timer = setInterval(step, intervalForSpeed(speedMultiplier, baseMs))
+      return
     }
+    if (knockout.isComplete()) return
+
+    const round = knockout.currentRound()
+    if (round !== lastRound) {
+      lastRound = round
+      opts.onRoundChange?.(round)
+    }
+    timer = setTimeout(step, knockoutInterval(round, speedMultiplier, baseMs))
   }
 
   function step(): void {
     const reveal = knockout.revealNextTie()
     if (!reveal) return
 
-    if (reveal.round !== lastRound) {
-      lastRound = reveal.round
-      opts.onRoundChange?.(reveal.round)
-    }
-
     if (reveal.round === 'F') {
-      clearInterval(timer)
-      timer = undefined
+      clearTimer()
       if (opts.finalContainer) {
         finaleTimeline = buildFinalTimeline(reveal.result, opts.rng)
         finaleMinute = 0
@@ -346,24 +375,24 @@ export function startKnockout(
 
     const container = opts.containerForRound?.(reveal.round)
     if (container) revealTie(container, reveal.result, reveal.round, reveal.index)
+    scheduleStep()
   }
 
-  if (!knockout.isComplete()) startTimer()
+  if (!knockout.isComplete()) scheduleStep()
 
   return {
     play() {
       const pending = !knockout.isComplete() || finaleTimeline !== null
-      if (timer === undefined && pending) startTimer()
+      if (timer === undefined && pending) scheduleStep()
     },
     pause() {
-      if (timer !== undefined) {
-        clearInterval(timer)
-        timer = undefined
-      }
+      clearTimer()
     },
     setSpeed(multiplier: number) {
       speedMultiplier = multiplier
-      if (timer !== undefined) startTimer()
+      // The final runs at a fixed slow-motion speed, so only reschedule the
+      // pending earlier-round step when one is in flight.
+      if (timer !== undefined && finaleTimeline === null) scheduleStep()
     },
     isPlaying() {
       return timer !== undefined
