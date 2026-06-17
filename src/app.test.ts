@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { intervalForSpeed, isComplete } from './app'
+import { intervalForSpeed, isComplete, knockoutInterval } from './app'
 
 describe('isComplete', () => {
   it('is true when every match has been revealed', () => {
@@ -25,5 +25,22 @@ describe('intervalForSpeed', () => {
 
   it('uses 1200ms as default base', () => {
     expect(intervalForSpeed(1)).toBe(1200)
+  })
+})
+
+describe('knockoutInterval', () => {
+  it('lets early rounds follow the selected speed', () => {
+    expect(knockoutInterval('R32', 8, 1200)).toBe(150)
+    expect(knockoutInterval('R16', 2, 1200)).toBe(600)
+    expect(knockoutInterval('QF', 4, 1200)).toBe(300)
+  })
+
+  it('pins semi-finals and third place to 1x regardless of speed', () => {
+    expect(knockoutInterval('SF', 8, 1200)).toBe(1200)
+    expect(knockoutInterval('3P', 4, 1200)).toBe(1200)
+  })
+
+  it('pauses at 1x before the final regardless of speed', () => {
+    expect(knockoutInterval('F', 8, 1200)).toBe(1200)
   })
 })
