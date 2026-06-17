@@ -20,6 +20,12 @@ export interface GroupEntry {
 const standingComparator = (a: Standing, b: Standing): number =>
   b.points - a.points || b.goalDiff - a.goalDiff || b.goalsFor - a.goalsFor
 
+/** Extract a group's letter from its name, e.g. "Group A" → "A". */
+export function groupLetter(groupName: string): string {
+  const parts = groupName.trim().split(/\s+/)
+  return parts[parts.length - 1]
+}
+
 /**
  * Compute the advancing set from group-stage standings.
  * Returns all winners, all runners-up, and the 8 best third-placed teams

@@ -1,7 +1,9 @@
 import './style.css'
-import { startTournament } from './app'
+import { type SimulationController, startKnockout, startTournament } from './app'
 import tournamentData from './data/tournament.json'
 import type { Tournament } from './model/types'
+import { renderChampion } from './render/bracket'
+import type { QualificationResult } from './sim/qualification'
 
 const tournament = tournamentData as Tournament
 
@@ -40,11 +42,16 @@ if (app) {
       <div class="groups-grid">${groupsHtml}</div>
       <aside id="qualification" class="qualification-aside"></aside>
     </div>
+    <section id="knockout" class="knockout-stage" hidden></section>
+    <section id="champion-stage" class="champion-stage" hidden></section>
   `
 
   const playPauseBtn = app.querySelector<HTMLButtonElement>('#play-pause')!
   const speedSelect = app.querySelector<HTMLSelectElement>('#speed')!
   const qualPanel = app.querySelector<HTMLElement>('#qualification')!
+  const tournamentLayout = app.querySelector<HTMLElement>('.tournament-layout')!
+  const knockoutEl = app.querySelector<HTMLElement>('#knockout')!
+  const championEl = app.querySelector<HTMLElement>('#champion-stage')!
 
   function buildGroupContainers() {
     return tournament.groups.map((group) => {
@@ -54,7 +61,31 @@ if (app) {
     })
   }
 
-  let controller = startTournament(buildGroupContainers(), qualPanel)
+  const currentSpeed = (): number => Number(speedSelect.value)
+
+  let controller: SimulationController
+
+  // When the group phase ends, clear the groups screen and play out the bracket.
+  function startKnockoutPhase(qualification: QualificationResult): void {
+    tournamentLayout.hidden = true
+    knockoutEl.hidden = false
+    controller = startKnockout(knockoutEl, qualification, {
+      onChampion: (team) => {
+        championEl.hidden = false
+        renderChampion(championEl, team)
+      },
+    })
+    controller.setSpeed(currentSpeed())
+    updatePlayPauseButton()
+  }
+
+  function startGroupPhase(): void {
+    controller = startTournament(buildGroupContainers(), qualPanel, {
+      onComplete: startKnockoutPhase,
+    })
+    controller.setSpeed(currentSpeed())
+    updatePlayPauseButton()
+  }
 
   function updatePlayPauseButton(): void {
     if (controller.isPlaying()) {
@@ -83,12 +114,16 @@ if (app) {
 
   app.querySelector('.groups-grid')!.addEventListener('click', () => {
     controller.pause()
+    knockoutEl.hidden = true
+    knockoutEl.innerHTML = ''
+    championEl.hidden = true
+    championEl.innerHTML = ''
+    tournamentLayout.hidden = false
     app.querySelectorAll('.group-panel, .graph-container').forEach((el) => {
       el.classList.remove('complete')
     })
-    controller = startTournament(buildGroupContainers(), qualPanel, {
-      intervalMs: 1200 / Number(speedSelect.value),
-    })
-    updatePlayPauseButton()
+    startGroupPhase()
   })
+
+  startGroupPhase()
 }
