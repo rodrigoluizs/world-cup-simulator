@@ -44,7 +44,7 @@ if (app) {
 
   app.innerHTML = `
     <header class="app-header">
-      <h1><img class="app-logo" src="/world-cup-logo.png" alt="" /><span class="app-title">2026 FIFA World Cup</span></h1>
+      <h1><img class="app-logo" src="${import.meta.env.BASE_URL}world-cup-logo.png" alt="" /><span class="app-title">2026 FIFA World Cup</span></h1>
       <div class="playback-controls">
         <button id="play-pause" type="button" class="btn-play" aria-label="Play">▶ Play</button>
         <label class="speed-label">

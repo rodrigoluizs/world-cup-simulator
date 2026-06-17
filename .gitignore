@@ -15,3 +15,6 @@ coverage/
 # Factory run artifacts stay on disk, out of git, so they do not trip the
 # implement station's clean-tree preflight.
 runs/
+
+# Playwright MCP artifacts
+.playwright-mcp/
