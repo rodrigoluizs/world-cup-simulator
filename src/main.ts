@@ -8,6 +8,9 @@ import type { QualificationResult } from './sim/qualification'
 
 const tournament = tournamentData as Tournament
 
+/** Pause after the last group match lands so its highlight is seen before the bracket opens. */
+const GROUP_FINISH_PAUSE_MS = 1500
+
 const app = document.querySelector<HTMLDivElement>('#app')
 if (app) {
   const groupsHtml = tournament.groups
@@ -138,7 +141,11 @@ if (app) {
 
   function startGroupPhase(): void {
     controller = startTournament(buildGroupContainers(), qualPanel, {
-      onComplete: startKnockoutPhase,
+      onComplete: (qualification) => {
+        // Hold on the group stage briefly so the final match's highlight is
+        // visible before the view jumps to the knockout bracket.
+        setTimeout(() => startKnockoutPhase(qualification), GROUP_FINISH_PAUSE_MS)
+      },
     })
     controller.setSpeed(currentSpeed())
     updatePlayPauseButton()
