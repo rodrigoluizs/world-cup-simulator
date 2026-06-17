@@ -12,6 +12,7 @@ import { renderQualification } from './render/qualification'
 import { renderStandings } from './render/standings'
 import { createKnockout, type KnockoutRound } from './sim/bracket'
 import { buildFinalTimeline, type FinalTimeline } from './sim/final-timeline'
+import { rigGroupResults } from './sim/mineirazo'
 import { generateMatches } from './sim/schedule'
 import { type GroupEntry, type QualificationResult, computeQualification } from './sim/qualification'
 import { computeStandings } from './sim/standings'
@@ -28,6 +29,8 @@ export interface StartOptions {
   qualifierCount?: number
   /** Called once every group has finished, with the final qualification. */
   onComplete?: (qualification: QualificationResult) => void
+  /** Hidden "Mineirazo" modifier: rig Brazil and Germany through to a 7-1 final. */
+  mineirazo?: boolean
 }
 
 export interface SimulationController {
@@ -44,6 +47,8 @@ interface GroupSimOptions {
   onTick?: (standings: Standing[], complete: boolean) => void
   /** When true, scroll each match into view just before its result is revealed. */
   autoScroll?: boolean
+  /** Hidden "Mineirazo" modifier: force Brazil and Germany to win their group matches. */
+  mineirazo?: boolean
 }
 
 interface GroupSimulation {
@@ -89,7 +94,8 @@ function createGroupSimulation(
 ): GroupSimulation {
   const qualifierCount = opts.qualifierCount ?? 2
   const matches = generateMatches(group.teams)
-  const results = simulateGroup(matches, opts.rng)
+  const baseResults = simulateGroup(matches, opts.rng)
+  const results = opts.mineirazo ? rigGroupResults(matches, baseResults) : baseResults
 
   renderGroupGraph(container, group, matches)
 
@@ -222,6 +228,7 @@ export function startSimulation(
     rng: opts.rng,
     standingsContainer: opts.standingsContainer,
     qualifierCount: opts.qualifierCount ?? 2,
+    mineirazo: opts.mineirazo,
   })
   return makeSharedClock([sim], baseMs)
 }
@@ -244,6 +251,7 @@ export function startTournament(
       // Only the first group drives auto-scroll; all groups advance in lockstep,
       // so following its current match keeps the whole row in view.
       autoScroll: i === 0,
+      mineirazo: opts.mineirazo,
     }),
   )
   return makeSharedClock(
@@ -268,6 +276,8 @@ export interface KnockoutOptions {
   containerForRound?: (round: KnockoutRound) => HTMLElement
   /** Where the goal-by-goal Final plays; if omitted the champion fires immediately. */
   finalContainer?: HTMLElement
+  /** Hidden "Mineirazo" modifier: rig the bracket to a Brazil 7-1 Germany final. */
+  mineirazo?: boolean
 }
 
 /**
@@ -281,7 +291,7 @@ export function startKnockout(
   opts: KnockoutOptions = {},
 ): SimulationController {
   const baseMs = opts.intervalMs ?? DEFAULT_INTERVAL_MS
-  const knockout = createKnockout(qualification, opts.rng)
+  const knockout = createKnockout(qualification, opts.rng, { mineirazo: opts.mineirazo })
 
   // Render each non-Final round into its own container
   for (const roundView of knockout.rounds) {

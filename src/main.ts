@@ -44,7 +44,7 @@ if (app) {
 
   app.innerHTML = `
     <header class="app-header">
-      <h1>2026 FIFA World Cup</h1>
+      <h1><img class="app-logo" src="/world-cup-logo.png" alt="" /><span class="app-title">2026 FIFA World Cup</span></h1>
       <div class="playback-controls">
         <button id="play-pause" type="button" class="btn-play" aria-label="Play">▶ Play</button>
         <label class="speed-label">
@@ -78,6 +78,12 @@ if (app) {
   const groupsPanel = app.querySelector<HTMLElement>('#panel-groups')!
   const groupsTabBtn = app.querySelector<HTMLButtonElement>('#tab-groups')!
   const finalContainer = app.querySelector<HTMLElement>('#final-container')!
+  const titleEl = app.querySelector<HTMLElement>('.app-header h1')!
+
+  // Hidden "Mineirazo" modifier: armed by secretly clicking the title before
+  // pressing Play. When armed, the tournament is rigged to a Brazil 7-1 Germany
+  // final; the title shows a Brazil-colours gradient to confirm it is on.
+  let mineirazoArmed = false
 
   const knockoutTabBtns = new Map<KnockoutRound, HTMLButtonElement>()
   const roundContainers = new Map<KnockoutRound, HTMLElement>()
@@ -126,6 +132,7 @@ if (app) {
     knockoutTabBtns.get('R32')!.disabled = false
     setActiveStage('R32')
     controller = startKnockout(qualification, {
+      mineirazo: mineirazoArmed,
       containerForRound: (round) => roundContainers.get(round)!,
       finalContainer,
       onRoundChange: (round) => {
@@ -141,6 +148,7 @@ if (app) {
 
   function startGroupPhase(autoplay = true): void {
     controller = startTournament(buildGroupContainers(), qualPanel, {
+      mineirazo: mineirazoArmed,
       onComplete: (qualification) => {
         // Hold on the group stage briefly so the final match's highlight is
         // visible before the view jumps to the knockout bracket.
@@ -186,8 +194,9 @@ if (app) {
     })
   }
 
-  // Clicking the groups grid resets and re-runs from the start
-  app.querySelector('.groups-grid')!.addEventListener('click', () => {
+  // Tear the running tournament back down to a fresh group stage (used by both
+  // the groups-grid reset and the hidden modifier toggle).
+  function resetTournamentUI(): void {
     controller.pause()
     for (const round of ROUND_ORDER) {
       const btn = knockoutTabBtns.get(round)!
@@ -196,11 +205,25 @@ if (app) {
       btn.setAttribute('aria-selected', 'false')
       app!.querySelector<HTMLElement>(`#panel-${round}`)!.hidden = true
     }
-    app.querySelectorAll('.group-panel, .graph-container').forEach((el) => {
+    app!.querySelectorAll('.group-panel, .graph-container').forEach((el) => {
       el.classList.remove('complete')
     })
     setActiveStage('groups')
+  }
+
+  // Clicking the groups grid resets and re-runs from the start
+  app.querySelector('.groups-grid')!.addEventListener('click', () => {
+    resetTournamentUI()
     startGroupPhase()
+  })
+
+  // Secretly click the title to arm/disarm the Mineirazo modifier. Re-runs the
+  // group stage so the rig takes effect, but stays paused so the user presses Play.
+  titleEl.addEventListener('click', () => {
+    mineirazoArmed = !mineirazoArmed
+    titleEl.classList.toggle('mineirazo', mineirazoArmed)
+    resetTournamentUI()
+    startGroupPhase(false)
   })
 
   startGroupPhase(false)

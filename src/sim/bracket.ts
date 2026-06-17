@@ -1,4 +1,10 @@
 import type { Team } from '../model/types'
+import {
+  MINEIRAZO_AWAY_CODE,
+  MINEIRAZO_AWAY_GOALS,
+  MINEIRAZO_HOME_CODE,
+  MINEIRAZO_HOME_GOALS,
+} from './mineirazo'
 import { groupLetter, type QualificationResult } from './qualification'
 import { type Rng, simulateMatch } from './simulate'
 import { placeThirds } from './thirds-placement'
@@ -160,6 +166,55 @@ export function resolveTie(tie: Tie, rng: Rng = Math.random): TieResult {
   }
 }
 
+/**
+ * Mineirazo rigging: force Brazil or Germany to win any tie they appear in, with
+ * a decisive 1-0 scoreline. Ties involving neither team fall through to the
+ * normal {@link resolveTie}. Used for every round up to (but not including) the
+ * final, where they meet and the scoreline is fixed by {@link buildMineirazoFinal}.
+ */
+export function rigResolveTie(tie: Tie, rng: Rng = Math.random): TieResult {
+  const forced =
+    tie.home.team.code === MINEIRAZO_HOME_CODE || tie.away.team.code === MINEIRAZO_HOME_CODE
+      ? MINEIRAZO_HOME_CODE
+      : tie.home.team.code === MINEIRAZO_AWAY_CODE || tie.away.team.code === MINEIRAZO_AWAY_CODE
+        ? MINEIRAZO_AWAY_CODE
+        : null
+  if (!forced) return resolveTie(tie, rng)
+
+  const homeWins = tie.home.team.code === forced
+  return {
+    tie,
+    homeGoals: homeWins ? 1 : 0,
+    awayGoals: homeWins ? 0 : 1,
+    winner: homeWins ? tie.home : tie.away,
+    loser: homeWins ? tie.away : tie.home,
+    decidedByTiebreak: false,
+  }
+}
+
+/**
+ * Build the rigged final from the two finalists: Brazil is forced as the home
+ * side and Germany as the away side, with the canonical 7-1 scoreline. Throws if
+ * both teams are not among the finalists (the bracket seeding guarantees they are).
+ */
+export function buildMineirazoFinal(finalists: BracketTeam[]): { tie: Tie; result: TieResult } {
+  const home = finalists.find((f) => f.team.code === MINEIRAZO_HOME_CODE)
+  const away = finalists.find((f) => f.team.code === MINEIRAZO_AWAY_CODE)
+  if (!home || !away) {
+    throw new Error('Mineirazo final requires both Brazil and Germany among the finalists')
+  }
+  const tie: Tie = { home, away }
+  const result: TieResult = {
+    tie,
+    homeGoals: MINEIRAZO_HOME_GOALS,
+    awayGoals: MINEIRAZO_AWAY_GOALS,
+    winner: home,
+    loser: away,
+    decidedByTiebreak: false,
+  }
+  return { tie, result }
+}
+
 /** Pair this round's winners into the next round's ties, preserving order. */
 export function advanceRound(results: TieResult[]): Tie[] {
   const ties: Tie[] = []
@@ -197,8 +252,12 @@ export function isLastTieOfRound(
 export function createKnockout(
   qualification: QualificationResult,
   rng: Rng = Math.random,
+  options: { mineirazo?: boolean } = {},
 ): KnockoutState {
-  const playRound = (ties: Tie[]): TieResult[] => ties.map((tie) => resolveTie(tie, rng))
+  // When armed, every tie up to the final forces Brazil/Germany through; the
+  // final itself is the fixed 7-1. Off, this is the stock random bracket.
+  const resolve = options.mineirazo ? rigResolveTie : resolveTie
+  const playRound = (ties: Tie[]): TieResult[] => ties.map((tie) => resolve(tie, rng))
 
   const r32Ties = seedBracket(qualification)
   const r32 = playRound(r32Ties)
@@ -210,9 +269,18 @@ export function createKnockout(
   const sf = playRound(sfTies)
 
   const thirdPlaceTie: Tie = { home: sf[0].loser, away: sf[1].loser }
-  const finalTie: Tie = { home: sf[0].winner, away: sf[1].winner }
   const thirdPlace = resolveTie(thirdPlaceTie, rng)
-  const final = resolveTie(finalTie, rng)
+
+  let finalTie: Tie
+  let final: TieResult
+  if (options.mineirazo) {
+    const rigged = buildMineirazoFinal([sf[0].winner, sf[1].winner])
+    finalTie = rigged.tie
+    final = rigged.result
+  } else {
+    finalTie = { home: sf[0].winner, away: sf[1].winner }
+    final = resolveTie(finalTie, rng)
+  }
 
   const rounds: BracketRoundView[] = [
     { round: 'R32', ties: r32Ties, results: r32 },
