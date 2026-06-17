@@ -169,3 +169,58 @@ describe('createKnockout', () => {
     expect(knockout.revealNextTie()).toBeNull()
   })
 })
+
+describe('createKnockout (mineirazo)', () => {
+  /** Qualification with Brazil winning Group C and Germany winning Group E. */
+  function mineirazoQualification(): QualificationResult {
+    const q = fullQualification()
+    q.winners = q.winners.map((w) =>
+      w.group === 'Group C'
+        ? { ...w, team: team('BRA') }
+        : w.group === 'Group E'
+          ? { ...w, team: team('GER') }
+          : w,
+    )
+    return q
+  }
+
+  it('crowns Brazil as champion', () => {
+    const knockout = createKnockout(mineirazoQualification(), seq([0.1, 0.9]), { mineirazo: true })
+    while (knockout.revealNextTie() !== null) {
+      // reveal every tie
+    }
+    expect(knockout.champion()?.code).toBe('BRA')
+  })
+
+  it('produces a Brazil(home) 7-1 Germany(away) final', () => {
+    const knockout = createKnockout(mineirazoQualification(), seq([0.1, 0.9]), { mineirazo: true })
+    const final = knockout.rounds.find((r) => r.round === 'F')!.results[0]
+    expect(final.tie.home.team.code).toBe('BRA')
+    expect(final.tie.away.team.code).toBe('GER')
+    expect(final.homeGoals).toBe(7)
+    expect(final.awayGoals).toBe(1)
+    expect(final.winner.team.code).toBe('BRA')
+  })
+
+  it('lets Brazil and Germany win every tie on their path', () => {
+    const knockout = createKnockout(mineirazoQualification(), seq([0.1, 0.9]), { mineirazo: true })
+    for (const round of knockout.rounds) {
+      for (const r of round.results) {
+        const codes = [r.tie.home.team.code, r.tie.away.team.code]
+        if (codes.includes('BRA')) expect(r.winner.team.code).toBe('BRA')
+        // Germany wins everything except the final, where Brazil beats it.
+        if (codes.includes('GER') && round.round !== 'F') expect(r.winner.team.code).toBe('GER')
+      }
+    }
+  })
+
+  it('is unchanged when the modifier is off', () => {
+    const armed = createKnockout(fullQualification(), seq([0.3, 0.7]), { mineirazo: false })
+    const plain = createKnockout(fullQualification(), seq([0.3, 0.7]))
+    const armedFinal = armed.rounds.find((r) => r.round === 'F')!.results[0]
+    const plainFinal = plain.rounds.find((r) => r.round === 'F')!.results[0]
+    expect(armedFinal.winner.team.code).toBe(plainFinal.winner.team.code)
+    expect(armedFinal.homeGoals).toBe(plainFinal.homeGoals)
+    expect(armedFinal.awayGoals).toBe(plainFinal.awayGoals)
+  })
+})
