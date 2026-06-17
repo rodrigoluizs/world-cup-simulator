@@ -647,13 +647,31 @@ body {
 
 /* ── Per-stage knockout round panels ────────────────────────────── */
 .round-panel {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-content: center;
+  align-items: flex-start;
   gap: 0.5rem;
   padding: 1.25rem 2rem;
-  align-content: center;
   height: 100%;
   overflow: hidden;
+}
+
+.round-panel > .bracket-tie {
+  flex: 0 0 260px;
+}
+
+/* Quarter-finals onwards: few ties, stacked vertically and centred. */
+.round-panel--vertical {
+  flex-direction: column;
+  flex-wrap: nowrap;
+  align-items: center;
+}
+
+.round-panel--vertical > .bracket-tie {
+  flex: 0 0 auto;
+  width: 320px;
 }
 
 /* ── Live final stage ───────────────────────────────────────────── */

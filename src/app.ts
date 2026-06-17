@@ -358,11 +358,20 @@ export function startKnockout(
     if (knockout.isComplete()) return
 
     const round = knockout.currentRound()
-    if (round !== lastRound) {
-      lastRound = round
-      opts.onRoundChange?.(round)
-    }
-    timer = setTimeout(step, knockoutInterval(round, speedMultiplier, baseMs))
+    // Defer the tab switch into the timer callback. Revealing the last tie of a
+    // round advances currentRound() to the next round, so firing onRoundChange
+    // here (synchronously) would jump to the new tab before the just-revealed
+    // result is ever seen. Holding it until the timer fires keeps the previous
+    // round's last tie visible (highlight + score) for a full interval first —
+    // the same idea as GROUP_FINISH_PAUSE_MS for the group→knockout hop.
+    const enteringNewRound = round !== lastRound
+    timer = setTimeout(() => {
+      if (enteringNewRound) {
+        lastRound = round
+        opts.onRoundChange?.(round)
+      }
+      step()
+    }, knockoutInterval(round, speedMultiplier, baseMs))
   }
 
   function step(): void {
