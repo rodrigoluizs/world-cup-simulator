@@ -49,6 +49,18 @@ body {
   letter-spacing: -0.01em;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  height: 100dvh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+#app {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 /* ── Header ─────────────────────────────────────────────────────── */
@@ -129,8 +141,20 @@ body {
 .tab-bar {
   display: flex;
   gap: 0.5rem;
-  padding: 1.25rem 2.5rem 0;
+  padding: 1rem 2.5rem 0;
   justify-content: center;
+  flex-shrink: 0;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.tab-bar::-webkit-scrollbar { display: none; }
+
+.tab-panel {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
 }
 
 .tab-btn {
@@ -160,6 +184,9 @@ body {
 }
 
 /* ── Group stage layout ─────────────────────────────────────────── */
+/* The group stage keeps its full vertical view (standings included) and
+   scrolls within its tab panel; app.ts auto-scrolls to each match as it
+   is revealed. Only the knockout rounds are bounded to the viewport. */
 .tournament-layout {
   display: flex;
   align-items: flex-start;
@@ -364,7 +391,7 @@ body {
   flex: 0 0 230px;
   min-width: 190px;
   position: sticky;
-  top: 6rem;
+  top: 1.5rem;
 }
 
 .qualification-panel {
@@ -592,4 +619,178 @@ body {
     max-width: 340px;
     margin: 0 auto;
   }
+}
+
+/* ── Per-stage knockout round panels ────────────────────────────── */
+.round-panel {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 0.5rem;
+  padding: 1.25rem 2rem;
+  align-content: center;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* ── Live final stage ───────────────────────────────────────────── */
+.final-container {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+}
+
+.final-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  width: 100%;
+  max-width: 640px;
+}
+
+.final-minute {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  letter-spacing: 0.06em;
+  font-variant-numeric: tabular-nums;
+}
+
+.final-scoreboard {
+  display: flex;
+  align-items: center;
+  gap: 2.5rem;
+  width: 100%;
+  justify-content: center;
+}
+
+.fs-team {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+}
+
+.fs-flag { font-size: clamp(3rem, 7vw, 5rem); line-height: 1; }
+
+.fs-name {
+  font-size: 1rem;
+  font-weight: 600;
+  text-align: center;
+  color: var(--text);
+}
+
+.fs-score {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: clamp(3rem, 6vw, 5rem);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+  color: var(--text);
+  flex-shrink: 0;
+}
+
+.fs-score-sep {
+  color: var(--text-muted);
+  font-weight: 300;
+  font-size: 0.6em;
+}
+
+.final-et-badge {
+  background: var(--gold-dim);
+  color: var(--gold);
+  border: 1px solid var(--gold-border);
+  border-radius: 999px;
+  padding: 0.2rem 0.8rem;
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.final-goals-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  width: 100%;
+  max-height: 160px;
+  overflow-y: auto;
+}
+
+.final-goal-event {
+  padding: 0.3rem 0.6rem;
+  border-radius: var(--r-xs);
+  font-size: 0.84rem;
+  background: var(--surface-3);
+  animation: goal-flash 600ms var(--ease) both;
+}
+
+.final-goal-home { border-left: 2px solid var(--accent); }
+.final-goal-away { border-left: 2px solid var(--text-subtle); }
+
+@keyframes goal-flash {
+  0%   { background: var(--accent-dim); }
+  100% { background: var(--surface-3); }
+}
+
+/* ── Enhanced champion reveal ────────────────────────────────────── */
+.champion {
+  border-color: var(--gold-border) !important;
+  box-shadow: var(--shadow-lg), 0 0 0 1px var(--gold-border), 0 0 60px var(--gold-dim) !important;
+}
+
+.champion-label { color: var(--gold) !important; }
+
+/* Inline champion banner — sits above the kept scoreboard + goal feed */
+.final-champion {
+  text-align: center;
+  background: var(--surface);
+  border: 1px solid var(--gold-border);
+  border-radius: var(--r-lg);
+  padding: 1.25rem 2rem;
+  box-shadow: var(--shadow-lg), 0 0 50px var(--gold-dim);
+  animation: champion-pop var(--t3) var(--ease) both;
+}
+
+.final-champion-label {
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: var(--gold);
+  margin-bottom: 0.4rem;
+}
+
+.final-champion-name {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  font-size: clamp(1.6rem, 3vw, 2.4rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+
+.final-champion-flag { font-size: 1.4em; line-height: 1; }
+
+.final-minute.full-time::after {
+  content: ' · FT';
+  color: var(--gold);
+  font-weight: 700;
+}
+
+/* ── Small viewport fallback — allow scroll ──────────────────────── */
+@media (max-width: 768px), (max-height: 600px) {
+  body { height: auto; overflow: auto; }
+  #app { overflow: auto; }
+  .tab-panel { height: auto; overflow: visible; }
+  .round-panel { height: auto; overflow: visible; }
+  .tournament-layout { height: auto; overflow: visible; }
+  .final-container { height: auto; }
 }

@@ -1,9 +1,17 @@
 import type { Group, Standing, Team, Tournament } from './model/types'
-import { renderBracket, revealRound, revealTie } from './render/bracket'
+import {
+  renderFinalStage,
+  renderSingleRound,
+  revealFinalChampion,
+  revealFinalGoal,
+  revealTie,
+  tickFinalMinute,
+} from './render/bracket'
 import { renderGroupGraph, revealResult } from './render/graph'
 import { renderQualification } from './render/qualification'
 import { renderStandings } from './render/standings'
-import { createKnockout, isLastTieOfRound, nextRound } from './sim/bracket'
+import { createKnockout, type KnockoutRound } from './sim/bracket'
+import { buildFinalTimeline, type FinalTimeline } from './sim/final-timeline'
 import { generateMatches } from './sim/schedule'
 import { type GroupEntry, type QualificationResult, computeQualification } from './sim/qualification'
 import { computeStandings } from './sim/standings'
@@ -34,6 +42,8 @@ interface GroupSimOptions {
   standingsContainer?: HTMLElement
   qualifierCount?: number
   onTick?: (standings: Standing[], complete: boolean) => void
+  /** When true, scroll each match into view just before its result is revealed. */
+  autoScroll?: boolean
 }
 
 interface GroupSimulation {
@@ -92,6 +102,11 @@ function createGroupSimulation(
   return {
     revealNext() {
       if (revealed >= results.length) return
+      if (opts.autoScroll) {
+        container
+          .querySelector(`#match-${revealed}`)
+          ?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+      }
       revealResult(container, results[revealed], revealed)
       revealed++
       const complete = isComplete(revealed, results.length)
@@ -203,11 +218,14 @@ export function startTournament(
   opts: StartOptions = {},
 ): SimulationController {
   const baseMs = opts.intervalMs ?? DEFAULT_INTERVAL_MS
-  const sims = groupContainers.map(({ graphEl, standingsEl, group }) =>
+  const sims = groupContainers.map(({ graphEl, standingsEl, group }, i) =>
     createGroupSimulation(graphEl, group, {
       rng: opts.rng,
       standingsContainer: standingsEl,
       qualifierCount: opts.qualifierCount ?? 2,
+      // Only the first group drives auto-scroll; all groups advance in lockstep,
+      // so following its current match keeps the whole row in view.
+      autoScroll: i === 0,
     }),
   )
   return makeSharedClock(
@@ -224,56 +242,118 @@ export interface KnockoutOptions {
   intervalMs?: number
   /** Randomness source, injectable for testing. */
   rng?: Rng
-  /** Called once the final is revealed, with the tournament winner. */
+  /** Called once the champion is crowned (after the finale animation). */
   onChampion?: (team: Team) => void
+  /** Called whenever the active round advances to a new stage. */
+  onRoundChange?: (round: KnockoutRound) => void
+  /** Returns the container element for a given knockout round (all non-Final rounds). */
+  containerForRound?: (round: KnockoutRound) => HTMLElement
+  /** Where the goal-by-goal Final plays; if omitted the champion fires immediately. */
+  finalContainer?: HTMLElement
 }
 
 /**
- * Render the seeded knockout bracket, then reveal one tie at a time on a timer
- * until a champion is crowned. Returns a controller to play, pause, and change
- * speed, mirroring the group-stage clock.
+ * Render the seeded knockout bracket into per-round containers, then reveal
+ * one tie at a time on a timer until the Final. The Final plays goal-by-goal
+ * in finalContainer before crowning the champion. Returns a controller to
+ * play, pause, and change speed.
  */
 export function startKnockout(
-  container: HTMLElement,
   qualification: QualificationResult,
   opts: KnockoutOptions = {},
 ): SimulationController {
   const baseMs = opts.intervalMs ?? DEFAULT_INTERVAL_MS
   const knockout = createKnockout(qualification, opts.rng)
-  renderBracket(container, knockout)
+
+  // Render each non-Final round into its own container
+  for (const roundView of knockout.rounds) {
+    if (roundView.round !== 'F') {
+      const container = opts.containerForRound?.(roundView.round)
+      if (container) renderSingleRound(container, roundView)
+    } else if (opts.finalContainer && roundView.ties[0]) {
+      renderFinalStage(opts.finalContainer, roundView.ties[0].home, roundView.ties[0].away)
+    }
+  }
 
   let speedMultiplier = 1
   let timer: ReturnType<typeof setInterval> | undefined
+  let lastRound: KnockoutRound | null = null
+  let finaleTimeline: FinalTimeline | null = null
+  let finaleMinute = 0
+  let finaleGoalIndex = 0
 
-  function step(): void {
-    const reveal = knockout.revealNextTie()
-    if (reveal) {
-      revealTie(container, reveal.result, reveal.round, reveal.index)
-      if (isLastTieOfRound(knockout, reveal.round, reveal.index)) {
-        const next = nextRound(reveal.round)
-        if (next) revealRound(container, next)
+  function startFinaleTimer(): void {
+    if (timer !== undefined) clearInterval(timer)
+    if (!finaleTimeline || !opts.finalContainer) return
+    const ft = finaleTimeline
+    const fc = opts.finalContainer
+    const tickMs = Math.max(16, Math.round(4500 / (ft.finalMinute + 1) / speedMultiplier))
+    timer = setInterval(() => {
+      tickFinalMinute(fc, finaleMinute)
+      while (
+        finaleGoalIndex < ft.goals.length &&
+        ft.goals[finaleGoalIndex].minute <= finaleMinute
+      ) {
+        revealFinalGoal(fc, ft.goals[finaleGoalIndex])
+        finaleGoalIndex++
       }
-    }
-    if (knockout.isComplete()) {
-      if (timer !== undefined) {
+      finaleMinute++
+      if (finaleMinute > ft.finalMinute) {
         clearInterval(timer)
         timer = undefined
+        finaleTimeline = null
+        const champ = knockout.champion()
+        if (champ) {
+          revealFinalChampion(fc, champ)
+          opts.onChampion?.(champ)
+        }
       }
-      const champ = knockout.champion()
-      if (champ) opts.onChampion?.(champ)
-    }
+    }, tickMs)
   }
 
   function startTimer(): void {
     if (timer !== undefined) clearInterval(timer)
-    timer = setInterval(step, intervalForSpeed(speedMultiplier, baseMs))
+    if (finaleTimeline !== null) {
+      startFinaleTimer()
+    } else {
+      timer = setInterval(step, intervalForSpeed(speedMultiplier, baseMs))
+    }
+  }
+
+  function step(): void {
+    const reveal = knockout.revealNextTie()
+    if (!reveal) return
+
+    if (reveal.round !== lastRound) {
+      lastRound = reveal.round
+      opts.onRoundChange?.(reveal.round)
+    }
+
+    if (reveal.round === 'F') {
+      clearInterval(timer)
+      timer = undefined
+      if (opts.finalContainer) {
+        finaleTimeline = buildFinalTimeline(reveal.result, opts.rng)
+        finaleMinute = 0
+        finaleGoalIndex = 0
+        startFinaleTimer()
+      } else {
+        const champ = knockout.champion()
+        if (champ) opts.onChampion?.(champ)
+      }
+      return
+    }
+
+    const container = opts.containerForRound?.(reveal.round)
+    if (container) revealTie(container, reveal.result, reveal.round, reveal.index)
   }
 
   if (!knockout.isComplete()) startTimer()
 
   return {
     play() {
-      if (timer === undefined && !knockout.isComplete()) startTimer()
+      const pending = !knockout.isComplete() || finaleTimeline !== null
+      if (timer === undefined && pending) startTimer()
     },
     pause() {
       if (timer !== undefined) {
