@@ -169,6 +169,25 @@ export function advanceRound(results: TieResult[]): Tie[] {
   return ties
 }
 
+/** The complete knockout round sequence in play order. */
+export const ROUND_ORDER: ReadonlyArray<KnockoutRound> = ['R32', 'R16', 'QF', 'SF', '3P', 'F']
+
+/** The round that follows `round`, or null if `round` is the final. */
+export function nextRound(round: KnockoutRound): KnockoutRound | null {
+  const idx = ROUND_ORDER.indexOf(round)
+  return idx >= 0 && idx < ROUND_ORDER.length - 1 ? ROUND_ORDER[idx + 1] : null
+}
+
+/** True when `index` is the last tie in `round` according to the bracket state. */
+export function isLastTieOfRound(
+  bracket: KnockoutState,
+  round: KnockoutRound,
+  index: number,
+): boolean {
+  const roundView = bracket.rounds.find((r) => r.round === round)
+  return roundView !== undefined && index === roundView.ties.length - 1
+}
+
 /**
  * Precompute the entire knockout stage from a finished group stage and return a
  * controller that reveals ties one at a time, in playing order: Round of 32,
