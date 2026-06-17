@@ -12,7 +12,6 @@ coverage/
 # Editor
 .idea/
 
-# Factory artifacts stay on disk, out of git, so planner/refine writes do not
-# trip the implement station's clean-tree preflight.
-.beans/
+# Factory run artifacts stay on disk, out of git, so they do not trip the
+# implement station's clean-tree preflight.
 runs/
