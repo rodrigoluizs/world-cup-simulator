@@ -38,18 +38,31 @@ if (app) {
         </label>
       </div>
     </header>
-    <div class="tournament-layout">
-      <div class="groups-grid">${groupsHtml}</div>
-      <aside id="qualification" class="qualification-aside"></aside>
+    <nav class="tab-bar" role="tablist">
+      <button class="tab-btn tab-btn--active" id="tab-groups" role="tab"
+        aria-selected="true" aria-controls="panel-groups">Group Stage</button>
+      <button class="tab-btn" id="tab-knockouts" role="tab"
+        aria-selected="false" aria-controls="panel-knockouts" disabled>Knockouts</button>
+    </nav>
+    <div id="panel-groups" class="tab-panel" role="tabpanel">
+      <div class="tournament-layout">
+        <div class="groups-grid">${groupsHtml}</div>
+        <aside id="qualification" class="qualification-aside"></aside>
+      </div>
     </div>
-    <section id="knockout" class="knockout-stage" hidden></section>
-    <section id="champion-stage" class="champion-stage" hidden></section>
+    <div id="panel-knockouts" class="tab-panel" hidden role="tabpanel">
+      <section id="knockout" class="knockout-stage"></section>
+      <section id="champion-stage" class="champion-stage" hidden></section>
+    </div>
   `
 
   const playPauseBtn = app.querySelector<HTMLButtonElement>('#play-pause')!
   const speedSelect = app.querySelector<HTMLSelectElement>('#speed')!
   const qualPanel = app.querySelector<HTMLElement>('#qualification')!
-  const tournamentLayout = app.querySelector<HTMLElement>('.tournament-layout')!
+  const groupsPanel = app.querySelector<HTMLElement>('#panel-groups')!
+  const knockoutsPanel = app.querySelector<HTMLElement>('#panel-knockouts')!
+  const groupsTabBtn = app.querySelector<HTMLButtonElement>('#tab-groups')!
+  const knockoutsTabBtn = app.querySelector<HTMLButtonElement>('#tab-knockouts')!
   const knockoutEl = app.querySelector<HTMLElement>('#knockout')!
   const championEl = app.querySelector<HTMLElement>('#champion-stage')!
 
@@ -65,10 +78,19 @@ if (app) {
 
   let controller: SimulationController
 
-  // When the group phase ends, clear the groups screen and play out the bracket.
+  function setActiveTab(tab: 'groups' | 'knockouts'): void {
+    const isGroups = tab === 'groups'
+    groupsPanel.hidden = !isGroups
+    knockoutsPanel.hidden = isGroups
+    groupsTabBtn.classList.toggle('tab-btn--active', isGroups)
+    knockoutsTabBtn.classList.toggle('tab-btn--active', !isGroups)
+    groupsTabBtn.setAttribute('aria-selected', String(isGroups))
+    knockoutsTabBtn.setAttribute('aria-selected', String(!isGroups))
+  }
+
   function startKnockoutPhase(qualification: QualificationResult): void {
-    tournamentLayout.hidden = true
-    knockoutEl.hidden = false
+    knockoutsTabBtn.disabled = false
+    setActiveTab('knockouts')
     controller = startKnockout(knockoutEl, qualification, {
       onChampion: (team) => {
         championEl.hidden = false
@@ -114,12 +136,12 @@ if (app) {
 
   app.querySelector('.groups-grid')!.addEventListener('click', () => {
     controller.pause()
-    knockoutEl.hidden = true
     knockoutEl.innerHTML = ''
     championEl.hidden = true
     championEl.innerHTML = ''
-    tournamentLayout.hidden = false
-    app.querySelectorAll('.group-panel, .graph-container').forEach((el) => {
+    knockoutsTabBtn.disabled = true
+    setActiveTab('groups')
+    app!.querySelectorAll('.group-panel, .graph-container').forEach((el) => {
       el.classList.remove('complete')
     })
     startGroupPhase()
